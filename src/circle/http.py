@@ -16,6 +16,8 @@ from circle.exceptions import (
     ValidationError,
 )
 
+from circle.rate_limit import TokenBucket
+
 _STATUS_MAP: dict[int, type[CircleAPIError]] = {
     401: AuthenticationError,
     403: ForbiddenError,
@@ -64,6 +66,7 @@ class _BaseTransport:
         timeout: float = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
         headers: dict[str, str] | None = None,
+        rate_limit: float | None = None,
     ) -> None:
         self._api_token = api_token
         self._base_url = base_url.rstrip("/")
@@ -71,6 +74,7 @@ class _BaseTransport:
         self._timeout = timeout
         self._max_retries = max_retries
         self._extra_headers = headers or {}
+        self._rate_limiter = TokenBucket(rate_limit) if rate_limit else None
 
     def _build_headers(self) -> dict[str, str]:
         h: dict[str, str] = {
@@ -92,6 +96,8 @@ class SyncTransport(_BaseTransport):
 
     def request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = self._full_url(path)
+        if self._rate_limiter:
+            self._rate_limiter.acquire()
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:
@@ -134,6 +140,8 @@ class AsyncTransport(_BaseTransport):
         import asyncio
 
         url = self._full_url(path)
+        if self._rate_limiter:
+            await self._rate_limiter.aacquire()
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:

@@ -91,10 +91,11 @@ class CircleClient:
         api_token: str,
         base_url: str = DEFAULT_BASE_URL,
         community_url: Optional[str] = None,
+        rate_limit: Optional[float] = None,
     ) -> None:
         url = (community_url or base_url).rstrip("/")
-        self._admin_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Token")
-        self._bearer_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer")
+        self._admin_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
+        self._bearer_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
         self.auth = HeadlessAuthClient(self._bearer_transport)
         self.admin = _AdminNamespace(self._admin_transport)
         self.headless = _HeadlessNamespace(self._bearer_transport)
@@ -118,10 +119,11 @@ class AsyncCircleClient:
         api_token: str,
         base_url: str = DEFAULT_BASE_URL,
         community_url: Optional[str] = None,
+        rate_limit: Optional[float] = None,
     ) -> None:
         url = (community_url or base_url).rstrip("/")
-        self._admin_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Token")
-        self._bearer_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer")
+        self._admin_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
+        self._bearer_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
         self.auth = AsyncHeadlessAuthClient(self._bearer_transport)
         self.admin = _AsyncAdminNamespace(self._admin_transport)
         self.headless = _AsyncHeadlessNamespace(self._bearer_transport)
