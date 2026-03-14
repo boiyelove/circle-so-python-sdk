@@ -54,7 +54,6 @@ class TestHeadlessAuthClient:
         assert t._calls[0][2]["json"] == {"refresh_token": "ref123"}
 
 
-@pytest.mark.asyncio
 class TestAsyncHeadlessAuthClient:
     def _client(self, responses=None):
         return AsyncHeadlessAuthClient(MockAsyncTransport(responses or {}))

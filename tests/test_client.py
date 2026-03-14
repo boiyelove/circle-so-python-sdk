@@ -35,7 +35,6 @@ class TestCircleClientFacade:
         c.close()
 
 
-@pytest.mark.asyncio
 class TestAsyncCircleClientFacade:
     async def test_async_context_manager(self):
         async with AsyncCircleClient(api_token="test") as c:
