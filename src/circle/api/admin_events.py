@@ -1,10 +1,20 @@
 """Admin API -- Events & Event Attendees."""
 from __future__ import annotations
 from typing import Any, Dict, Optional
+from circle.constants import ADMIN_V2_PREFIX as _P
 from circle.http import AsyncTransport, SyncTransport
 from circle.models.admin.events import Event, EventList, EventAttendee, EventAttendeeList
 
-_P = "/api/admin/v2"
+
+def _list_events_params(
+    page: int, per_page: int, space_id: Optional[int], sort: Optional[str], **kwargs: Any,
+) -> Dict[str, Any]:
+    p: Dict[str, Any] = {"page": page, "per_page": per_page, **kwargs}
+    if space_id:
+        p["space_id"] = space_id
+    if sort:
+        p["sort"] = sort
+    return p
 
 
 class EventsClient:
@@ -13,10 +23,9 @@ class EventsClient:
 
     def list_events(self, *, page: int = 1, per_page: int = 60, space_id: Optional[int] = None,
                     sort: Optional[str] = None, **kwargs: Any) -> EventList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page, **kwargs}
-        if space_id: p["space_id"] = space_id
-        if sort: p["sort"] = sort
-        return EventList.model_validate(self._t.request("GET", f"{_P}/events", params=p))
+        return EventList.model_validate(
+            self._t.request("GET", f"{_P}/events",
+                            params=_list_events_params(page, per_page, space_id, sort, **kwargs)))
 
     def create_event(self, *, space_id: int, **kwargs: Any) -> Event:
         return Event.model_validate(
@@ -56,10 +65,9 @@ class AsyncEventsClient:
 
     async def list_events(self, *, page: int = 1, per_page: int = 60, space_id: Optional[int] = None,
                           sort: Optional[str] = None, **kwargs: Any) -> EventList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page, **kwargs}
-        if space_id: p["space_id"] = space_id
-        if sort: p["sort"] = sort
-        return EventList.model_validate(await self._t.request("GET", f"{_P}/events", params=p))
+        return EventList.model_validate(
+            await self._t.request("GET", f"{_P}/events",
+                                  params=_list_events_params(page, per_page, space_id, sort, **kwargs)))
 
     async def create_event(self, *, space_id: int, **kwargs: Any) -> Event:
         return Event.model_validate(

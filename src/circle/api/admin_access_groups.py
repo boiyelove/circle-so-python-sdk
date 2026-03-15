@@ -1,13 +1,35 @@
 """Admin API -- Access Groups & Access Group Members."""
 from __future__ import annotations
 from typing import Any, Dict, Optional
+from circle.constants import ADMIN_V2_PREFIX as _P
 from circle.http import AsyncTransport, SyncTransport
 from circle.models.admin.misc import (
     AccessGroup, AccessGroupList, AccessGroupCommunityMember, AccessGroupCommunityMemberList,
 )
 
-_P = "/api/admin/v2"
 
+# -- param builders ----------------------------------------------------------
+
+def _list_params(page: int, per_page: int, status: Optional[str],
+                 ids: Optional[list[int]], name: Optional[str]) -> Dict[str, Any]:
+    p: Dict[str, Any] = {"page": page, "per_page": per_page}
+    if status: p["status"] = status
+    if ids: p["ids"] = ids
+    if name: p["name"] = name
+    return p
+
+
+def _create_body(name: str, description: Optional[str]) -> Dict[str, Any]:
+    ag: Dict[str, Any] = {"name": name}
+    if description is not None: ag["description"] = description
+    return {"access_group": ag}
+
+
+def _page_params(page: int, per_page: int) -> Dict[str, Any]:
+    return {"page": page, "per_page": per_page}
+
+
+# -- sync client --------------------------------------------------------------
 
 class AccessGroupsClient:
     def __init__(self, transport: SyncTransport) -> None:
@@ -15,16 +37,12 @@ class AccessGroupsClient:
 
     def list_access_groups(self, *, page: int = 1, per_page: int = 60, status: Optional[str] = None,
                            ids: Optional[list[int]] = None, name: Optional[str] = None) -> AccessGroupList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if status: p["status"] = status
-        if ids: p["ids"] = ids
-        if name: p["name"] = name
-        return AccessGroupList.model_validate(self._t.request("GET", f"{_P}/access_groups", params=p))
+        return AccessGroupList.model_validate(
+            self._t.request("GET", f"{_P}/access_groups", params=_list_params(page, per_page, status, ids, name)))
 
     def create_access_group(self, *, name: str, description: Optional[str] = None) -> AccessGroup:
-        body: Dict[str, Any] = {"access_group": {"name": name}}
-        if description is not None: body["access_group"]["description"] = description
-        return AccessGroup.model_validate(self._t.request("POST", f"{_P}/access_groups", json=body))
+        return AccessGroup.model_validate(
+            self._t.request("POST", f"{_P}/access_groups", json=_create_body(name, description)))
 
     def update_access_group(self, access_group_id: int, **kwargs: Any) -> AccessGroup:
         return AccessGroup.model_validate(
@@ -41,7 +59,7 @@ class AccessGroupsClient:
                                   per_page: int = 60) -> AccessGroupCommunityMemberList:
         return AccessGroupCommunityMemberList.model_validate(
             self._t.request("GET", f"{_P}/access_groups/{access_group_id}/community_members",
-                            params={"page": page, "per_page": per_page}))
+                            params=_page_params(page, per_page)))
 
     def show_access_group_member(self, access_group_id: int, *, email: str) -> AccessGroupCommunityMember:
         return AccessGroupCommunityMember.model_validate(
@@ -60,8 +78,10 @@ class AccessGroupsClient:
                                             per_page: int = 60) -> AccessGroupList:
         return AccessGroupList.model_validate(
             self._t.request("GET", f"{_P}/community_members/{community_member_id}/access_groups",
-                            params={"page": page, "per_page": per_page}))
+                            params=_page_params(page, per_page)))
 
+
+# -- async client --------------------------------------------------------------
 
 class AsyncAccessGroupsClient:
     def __init__(self, transport: AsyncTransport) -> None:
@@ -69,16 +89,12 @@ class AsyncAccessGroupsClient:
 
     async def list_access_groups(self, *, page: int = 1, per_page: int = 60, status: Optional[str] = None,
                                  ids: Optional[list[int]] = None, name: Optional[str] = None) -> AccessGroupList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if status: p["status"] = status
-        if ids: p["ids"] = ids
-        if name: p["name"] = name
-        return AccessGroupList.model_validate(await self._t.request("GET", f"{_P}/access_groups", params=p))
+        return AccessGroupList.model_validate(
+            await self._t.request("GET", f"{_P}/access_groups", params=_list_params(page, per_page, status, ids, name)))
 
     async def create_access_group(self, *, name: str, description: Optional[str] = None) -> AccessGroup:
-        body: Dict[str, Any] = {"access_group": {"name": name}}
-        if description is not None: body["access_group"]["description"] = description
-        return AccessGroup.model_validate(await self._t.request("POST", f"{_P}/access_groups", json=body))
+        return AccessGroup.model_validate(
+            await self._t.request("POST", f"{_P}/access_groups", json=_create_body(name, description)))
 
     async def update_access_group(self, access_group_id: int, **kwargs: Any) -> AccessGroup:
         return AccessGroup.model_validate(
@@ -95,7 +111,7 @@ class AsyncAccessGroupsClient:
                                         per_page: int = 60) -> AccessGroupCommunityMemberList:
         return AccessGroupCommunityMemberList.model_validate(
             await self._t.request("GET", f"{_P}/access_groups/{access_group_id}/community_members",
-                                  params={"page": page, "per_page": per_page}))
+                                  params=_page_params(page, per_page)))
 
     async def show_access_group_member(self, access_group_id: int, *, email: str) -> AccessGroupCommunityMember:
         return AccessGroupCommunityMember.model_validate(
@@ -114,4 +130,4 @@ class AsyncAccessGroupsClient:
                                                   per_page: int = 60) -> AccessGroupList:
         return AccessGroupList.model_validate(
             await self._t.request("GET", f"{_P}/community_members/{community_member_id}/access_groups",
-                                  params={"page": page, "per_page": per_page}))
+                                  params=_page_params(page, per_page)))

@@ -1,13 +1,41 @@
 """Admin API -- Posts, Comments, Topics."""
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+from circle.constants import ADMIN_V2_PREFIX as _P
 from circle.http import AsyncTransport, SyncTransport
 from circle.models.admin.posts import (
     BasicPost, PostList, BasicPostCreatedResponse, BasicPostUpdatedResponse, BasicPostDeletedResponse,
     ImagePost, ImagePostCreatedResponse, AISummary, Comment, CommentList, Topic, TopicList,
 )
 
-_P = "/api/admin/v2"
+
+def _list_posts_params(page: int, per_page: int, space_id: Optional[int],
+                       space_group_id: Optional[int], status: Optional[str],
+                       search_text: Optional[str], sort: Optional[str]) -> Dict[str, Any]:
+    p: Dict[str, Any] = {"page": page, "per_page": per_page}
+    if space_id: p["space_id"] = space_id
+    if space_group_id: p["space_group_id"] = space_group_id
+    if status: p["status"] = status
+    if search_text: p["search_text"] = search_text
+    if sort: p["sort"] = sort
+    return p
+
+
+def _list_comments_params(page: int, per_page: int, space_id: Optional[int],
+                          post_id: Optional[int], search_text: Optional[str]) -> Dict[str, Any]:
+    p: Dict[str, Any] = {"page": page, "per_page": per_page}
+    if space_id: p["space_id"] = space_id
+    if post_id: p["post_id"] = post_id
+    if search_text: p["search_text"] = search_text
+    return p
+
+
+def _list_topics_params(page: int, per_page: int, name: Optional[str],
+                        sort: Optional[str]) -> Dict[str, Any]:
+    p: Dict[str, Any] = {"page": page, "per_page": per_page}
+    if name: p["name"] = name
+    if sort: p["sort"] = sort
+    return p
 
 
 class PostsClient:
@@ -18,13 +46,8 @@ class PostsClient:
     def list_posts(self, *, page: int = 1, per_page: int = 60, space_id: Optional[int] = None,
                    space_group_id: Optional[int] = None, status: Optional[str] = None,
                    search_text: Optional[str] = None, sort: Optional[str] = None) -> PostList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if space_id: p["space_id"] = space_id
-        if space_group_id: p["space_group_id"] = space_group_id
-        if status: p["status"] = status
-        if search_text: p["search_text"] = search_text
-        if sort: p["sort"] = sort
-        return PostList.model_validate(self._t.request("GET", f"{_P}/posts", params=p))
+        return PostList.model_validate(self._t.request(
+            "GET", f"{_P}/posts", params=_list_posts_params(page, per_page, space_id, space_group_id, status, search_text, sort)))
 
     def create_post(self, *, space_id: int, name: str, **kwargs: Any) -> BasicPostCreatedResponse:
         return BasicPostCreatedResponse.model_validate(
@@ -64,11 +87,8 @@ class PostsClient:
     # -- Comments --
     def list_comments(self, *, page: int = 1, per_page: int = 10, space_id: Optional[int] = None,
                       post_id: Optional[int] = None, search_text: Optional[str] = None) -> CommentList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if space_id: p["space_id"] = space_id
-        if post_id: p["post_id"] = post_id
-        if search_text: p["search_text"] = search_text
-        return CommentList.model_validate(self._t.request("GET", f"{_P}/comments", params=p))
+        return CommentList.model_validate(self._t.request(
+            "GET", f"{_P}/comments", params=_list_comments_params(page, per_page, space_id, post_id, search_text)))
 
     def create_comment(self, *, body: str, post_id: int, **kwargs: Any) -> Comment:
         return Comment.model_validate(
@@ -83,10 +103,8 @@ class PostsClient:
     # -- Topics --
     def list_topics(self, *, page: int = 1, per_page: int = 10, name: Optional[str] = None,
                     sort: Optional[str] = None) -> TopicList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if name: p["name"] = name
-        if sort: p["sort"] = sort
-        return TopicList.model_validate(self._t.request("GET", f"{_P}/topics", params=p))
+        return TopicList.model_validate(self._t.request(
+            "GET", f"{_P}/topics", params=_list_topics_params(page, per_page, name, sort)))
 
     def create_topic(self, *, name: str, **kwargs: Any) -> Topic:
         return Topic.model_validate(self._t.request("POST", f"{_P}/topics", json={"name": name, **kwargs}))
@@ -105,16 +123,12 @@ class AsyncPostsClient:
     def __init__(self, transport: AsyncTransport) -> None:
         self._t = transport
 
+    # -- Posts --
     async def list_posts(self, *, page: int = 1, per_page: int = 60, space_id: Optional[int] = None,
                          space_group_id: Optional[int] = None, status: Optional[str] = None,
                          search_text: Optional[str] = None, sort: Optional[str] = None) -> PostList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if space_id: p["space_id"] = space_id
-        if space_group_id: p["space_group_id"] = space_group_id
-        if status: p["status"] = status
-        if search_text: p["search_text"] = search_text
-        if sort: p["sort"] = sort
-        return PostList.model_validate(await self._t.request("GET", f"{_P}/posts", params=p))
+        return PostList.model_validate(await self._t.request(
+            "GET", f"{_P}/posts", params=_list_posts_params(page, per_page, space_id, space_group_id, status, search_text, sort)))
 
     async def create_post(self, *, space_id: int, name: str, **kwargs: Any) -> BasicPostCreatedResponse:
         return BasicPostCreatedResponse.model_validate(
@@ -133,6 +147,7 @@ class AsyncPostsClient:
     async def get_post_summary(self, post_id: int) -> AISummary:
         return AISummary.model_validate(await self._t.request("GET", f"{_P}/posts/{post_id}/summary"))
 
+    # -- Image Posts --
     async def create_image_post(self, space_id: int, **kwargs: Any) -> ImagePostCreatedResponse:
         return ImagePostCreatedResponse.model_validate(
             await self._t.request("POST", f"{_P}/spaces/{space_id}/images/posts", json=kwargs))
@@ -145,17 +160,16 @@ class AsyncPostsClient:
         return ImagePostCreatedResponse.model_validate(
             await self._t.request("POST", f"{_P}/spaces/{space_id}/images/posts/{post_id}/duplicate", json=kwargs))
 
+    # -- Post Followers --
     async def unfollow_post(self, post_id: int, *, community_member_id: int) -> Dict[str, Any]:
         return await self._t.request("DELETE", f"{_P}/posts/{post_id}/post_followers",
                                      params={"community_member_id": community_member_id})
 
+    # -- Comments --
     async def list_comments(self, *, page: int = 1, per_page: int = 10, space_id: Optional[int] = None,
                             post_id: Optional[int] = None, search_text: Optional[str] = None) -> CommentList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if space_id: p["space_id"] = space_id
-        if post_id: p["post_id"] = post_id
-        if search_text: p["search_text"] = search_text
-        return CommentList.model_validate(await self._t.request("GET", f"{_P}/comments", params=p))
+        return CommentList.model_validate(await self._t.request(
+            "GET", f"{_P}/comments", params=_list_comments_params(page, per_page, space_id, post_id, search_text)))
 
     async def create_comment(self, *, body: str, post_id: int, **kwargs: Any) -> Comment:
         return Comment.model_validate(
@@ -167,12 +181,11 @@ class AsyncPostsClient:
     async def delete_comment(self, comment_id: int) -> Dict[str, Any]:
         return await self._t.request("DELETE", f"{_P}/comments/{comment_id}")
 
+    # -- Topics --
     async def list_topics(self, *, page: int = 1, per_page: int = 10, name: Optional[str] = None,
                           sort: Optional[str] = None) -> TopicList:
-        p: Dict[str, Any] = {"page": page, "per_page": per_page}
-        if name: p["name"] = name
-        if sort: p["sort"] = sort
-        return TopicList.model_validate(await self._t.request("GET", f"{_P}/topics", params=p))
+        return TopicList.model_validate(await self._t.request(
+            "GET", f"{_P}/topics", params=_list_topics_params(page, per_page, name, sort)))
 
     async def create_topic(self, *, name: str, **kwargs: Any) -> Topic:
         return Topic.model_validate(await self._t.request("POST", f"{_P}/topics", json={"name": name, **kwargs}))
