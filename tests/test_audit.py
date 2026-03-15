@@ -104,3 +104,47 @@ class TestRetryControl:
             with pytest.raises(CircleAPIError):
                 t.request("GET", "/test", retry=False)
         assert mock_req.call_count == 1
+
+
+class TestEnvVarFallback:
+    def test_raises_without_token(self, monkeypatch):
+        monkeypatch.delenv("CIRCLE_API_TOKEN", raising=False)
+        with pytest.raises(ValueError, match="api_token is required"):
+            from circle import CircleClient
+            CircleClient()
+
+    def test_falls_back_to_env_token(self, monkeypatch):
+        monkeypatch.setenv("CIRCLE_API_TOKEN", "env_token")
+        from circle import CircleClient
+        c = CircleClient()
+        assert c._admin_transport._api_token == "env_token"
+        c.close()
+
+    def test_explicit_token_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("CIRCLE_API_TOKEN", "env_token")
+        from circle import CircleClient
+        c = CircleClient(api_token="explicit")
+        assert c._admin_transport._api_token == "explicit"
+        c.close()
+
+    def test_community_url_from_env(self, monkeypatch):
+        monkeypatch.setenv("CIRCLE_COMMUNITY_URL", "https://my.circle.so")
+        from circle import CircleClient
+        c = CircleClient(api_token="test")
+        assert c._admin_transport._base_url == "https://my.circle.so"
+        c.close()
+
+    def test_base_url_from_env(self, monkeypatch):
+        monkeypatch.setenv("CIRCLE_BASE_URL", "https://custom.circle.so")
+        monkeypatch.delenv("CIRCLE_COMMUNITY_URL", raising=False)
+        from circle import CircleClient
+        c = CircleClient(api_token="test")
+        assert c._admin_transport._base_url == "https://custom.circle.so"
+        c.close()
+
+    def test_explicit_url_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("CIRCLE_BASE_URL", "https://env.circle.so")
+        from circle import CircleClient
+        c = CircleClient(api_token="test", base_url="https://explicit.circle.so")
+        assert c._admin_transport._base_url == "https://explicit.circle.so"
+        c.close()

@@ -1,5 +1,6 @@
 """Top-level CircleClient and AsyncCircleClient facade."""
 from __future__ import annotations
+import os
 from typing import Optional
 
 from circle.http import DEFAULT_BASE_URL, AsyncTransport, SyncTransport
@@ -84,18 +85,54 @@ class _AsyncHeadlessNamespace:
 
 
 class CircleClient:
-    """Synchronous Circle SDK client composing all three APIs."""
+    """Synchronous Circle SDK client composing all three APIs.
+
+    Provides access to the Headless Auth, Admin V2, and Headless Client V1
+    APIs through the ``auth``, ``admin``, and ``headless`` namespaces.
+
+    Args:
+        api_token: Circle API token. Falls back to the ``CIRCLE_API_TOKEN``
+            environment variable if not provided.
+        base_url: Base URL for the Circle API. Falls back to the
+            ``CIRCLE_BASE_URL`` environment variable, then the default
+            ``https://app.circle.so``.
+        community_url: Optional community-specific URL. Falls back to the
+            ``CIRCLE_COMMUNITY_URL`` environment variable.
+        rate_limit: Optional requests-per-second limit. When set, the client
+            proactively throttles to avoid 429 responses.
+
+    Raises:
+        ValueError: If no api_token is provided and ``CIRCLE_API_TOKEN`` is
+            not set.
+
+    Examples:
+        >>> client = CircleClient(api_token="YOUR_TOKEN")
+        >>> community = client.admin.get_community()
+
+        >>> # Using environment variables (CIRCLE_API_TOKEN must be set)
+        >>> client = CircleClient()
+
+        >>> # With rate limiting
+        >>> client = CircleClient(api_token="YOUR_TOKEN", rate_limit=10)
+    """
 
     def __init__(
         self,
-        api_token: str,
-        base_url: str = DEFAULT_BASE_URL,
+        api_token: Optional[str] = None,
+        base_url: Optional[str] = None,
         community_url: Optional[str] = None,
         rate_limit: Optional[float] = None,
     ) -> None:
-        url = (community_url or base_url).rstrip("/")
-        self._admin_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
-        self._bearer_transport = SyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
+        token = api_token or os.environ.get("CIRCLE_API_TOKEN")
+        if not token:
+            raise ValueError(
+                "api_token is required. Pass it directly or set the CIRCLE_API_TOKEN environment variable."
+            )
+        resolved_base = base_url or os.environ.get("CIRCLE_BASE_URL", DEFAULT_BASE_URL)
+        resolved_community = community_url or os.environ.get("CIRCLE_COMMUNITY_URL")
+        url = (resolved_community or resolved_base).rstrip("/")
+        self._admin_transport = SyncTransport(api_token=token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
+        self._bearer_transport = SyncTransport(api_token=token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
         self.auth = HeadlessAuthClient(self._bearer_transport)
         self.admin = _AdminNamespace(self._admin_transport)
         self.headless = _HeadlessNamespace(self._bearer_transport)
@@ -112,18 +149,39 @@ class CircleClient:
 
 
 class AsyncCircleClient:
-    """Asynchronous Circle SDK client composing all three APIs."""
+    """Asynchronous Circle SDK client composing all three APIs.
+
+    Args:
+        api_token: Circle API token. Falls back to ``CIRCLE_API_TOKEN`` env var.
+        base_url: Base URL. Falls back to ``CIRCLE_BASE_URL`` env var.
+        community_url: Community URL. Falls back to ``CIRCLE_COMMUNITY_URL`` env var.
+        rate_limit: Optional requests-per-second limit.
+
+    Raises:
+        ValueError: If no api_token is provided and ``CIRCLE_API_TOKEN`` is not set.
+
+    Examples:
+        >>> async with AsyncCircleClient(api_token="YOUR_TOKEN") as client:
+        ...     members = await client.admin.list_community_members()
+    """
 
     def __init__(
         self,
-        api_token: str,
-        base_url: str = DEFAULT_BASE_URL,
+        api_token: Optional[str] = None,
+        base_url: Optional[str] = None,
         community_url: Optional[str] = None,
         rate_limit: Optional[float] = None,
     ) -> None:
-        url = (community_url or base_url).rstrip("/")
-        self._admin_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
-        self._bearer_transport = AsyncTransport(api_token=api_token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
+        token = api_token or os.environ.get("CIRCLE_API_TOKEN")
+        if not token:
+            raise ValueError(
+                "api_token is required. Pass it directly or set the CIRCLE_API_TOKEN environment variable."
+            )
+        resolved_base = base_url or os.environ.get("CIRCLE_BASE_URL", DEFAULT_BASE_URL)
+        resolved_community = community_url or os.environ.get("CIRCLE_COMMUNITY_URL")
+        url = (resolved_community or resolved_base).rstrip("/")
+        self._admin_transport = AsyncTransport(api_token=token, base_url=url, auth_scheme="Token", rate_limit=rate_limit)
+        self._bearer_transport = AsyncTransport(api_token=token, base_url=url, auth_scheme="Bearer", rate_limit=rate_limit)
         self.auth = AsyncHeadlessAuthClient(self._bearer_transport)
         self.admin = _AsyncAdminNamespace(self._admin_transport)
         self.headless = _AsyncHeadlessNamespace(self._bearer_transport)
