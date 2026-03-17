@@ -33,7 +33,7 @@ DEFAULT_BASE_URL = "https://app.circle.so"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_STATUSES = (429, 500, 502, 503, 504)
-SDK_VERSION = "0.1.0"
+SDK_VERSION = "0.1.1"
 USER_AGENT = f"circle-python-sdk/{SDK_VERSION} (python/{platform.python_version()})"
 
 
