@@ -11,6 +11,7 @@ from circle.exceptions import (
     RateLimitError,
     ValidationError,
 )
+from circle.utils import text_to_tiptap
 
 __all__ = [
     "CircleClient",
@@ -21,4 +22,5 @@ __all__ = [
     "ValidationError",
     "ForbiddenError",
     "RateLimitError",
+    "text_to_tiptap",
 ]

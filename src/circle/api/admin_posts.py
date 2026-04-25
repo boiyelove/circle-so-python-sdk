@@ -49,14 +49,20 @@ class PostsClient:
         return PostList.model_validate(self._t.request(
             "GET", f"{_P}/posts", params=_list_posts_params(page, per_page, space_id, space_group_id, status, search_text, sort)))
 
-    def create_post(self, *, space_id: int, name: str, **kwargs: Any) -> BasicPostCreatedResponse:
+    def create_post(self, *, space_id: int, name: str, body: Optional[str] = None, **kwargs: Any) -> BasicPostCreatedResponse:
+        if body is not None and "tiptap_body" not in kwargs:
+            from circle.utils import text_to_tiptap
+            kwargs["tiptap_body"] = text_to_tiptap(body)
         return BasicPostCreatedResponse.model_validate(
             self._t.request("POST", f"{_P}/posts", json={"space_id": space_id, "name": name, **kwargs}))
 
     def show_post(self, post_id: int) -> BasicPost:
         return BasicPost.model_validate(self._t.request("GET", f"{_P}/posts/{post_id}"))
 
-    def update_post(self, post_id: int, **kwargs: Any) -> BasicPostUpdatedResponse:
+    def update_post(self, post_id: int, *, body: Optional[str] = None, **kwargs: Any) -> BasicPostUpdatedResponse:
+        if body is not None and "tiptap_body" not in kwargs:
+            from circle.utils import text_to_tiptap
+            kwargs["tiptap_body"] = text_to_tiptap(body)
         return BasicPostUpdatedResponse.model_validate(
             self._t.request("PUT", f"{_P}/posts/{post_id}", json=kwargs))
 
@@ -130,14 +136,20 @@ class AsyncPostsClient:
         return PostList.model_validate(await self._t.request(
             "GET", f"{_P}/posts", params=_list_posts_params(page, per_page, space_id, space_group_id, status, search_text, sort)))
 
-    async def create_post(self, *, space_id: int, name: str, **kwargs: Any) -> BasicPostCreatedResponse:
+    async def create_post(self, *, space_id: int, name: str, body: Optional[str] = None, **kwargs: Any) -> BasicPostCreatedResponse:
+        if body is not None and "tiptap_body" not in kwargs:
+            from circle.utils import text_to_tiptap
+            kwargs["tiptap_body"] = text_to_tiptap(body)
         return BasicPostCreatedResponse.model_validate(
             await self._t.request("POST", f"{_P}/posts", json={"space_id": space_id, "name": name, **kwargs}))
 
     async def show_post(self, post_id: int) -> BasicPost:
         return BasicPost.model_validate(await self._t.request("GET", f"{_P}/posts/{post_id}"))
 
-    async def update_post(self, post_id: int, **kwargs: Any) -> BasicPostUpdatedResponse:
+    async def update_post(self, post_id: int, *, body: Optional[str] = None, **kwargs: Any) -> BasicPostUpdatedResponse:
+        if body is not None and "tiptap_body" not in kwargs:
+            from circle.utils import text_to_tiptap
+            kwargs["tiptap_body"] = text_to_tiptap(body)
         return BasicPostUpdatedResponse.model_validate(
             await self._t.request("PUT", f"{_P}/posts/{post_id}", json=kwargs))
 

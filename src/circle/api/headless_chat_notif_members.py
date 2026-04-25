@@ -49,18 +49,8 @@ def _page_params(page=1, per_page=10):
 
 def _text_to_tiptap(text: str) -> Dict[str, Any]:
     """Convert plain text to Circle's tiptap rich_text_body format."""
-    content = []
-    for p in text.split("\n\n"):
-        if not p.strip():
-            continue
-        lines = p.split("\n")
-        para_content: List[Dict[str, Any]] = []
-        for i, line in enumerate(lines):
-            if i > 0:
-                para_content.append({"type": "hardBreak"})
-            para_content.append({"type": "text", "text": line})
-        content.append({"type": "paragraph", "content": para_content})
-    return {"body": {"type": "doc", "content": content}}
+    from circle.utils import text_to_tiptap
+    return text_to_tiptap(text)
 
 
 class HeadlessChatNotifMembersClient:
