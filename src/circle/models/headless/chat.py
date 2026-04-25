@@ -103,9 +103,10 @@ class ChatRoomDetail(CircleModel):
 
 
 class ChatRoom(CircleModel):
+    """Deprecated: use ChatRoomDetail directly. Kept for backward compatibility."""
     chat_room: Optional[ChatRoomDetail] = None
 
-ChatRoomList = PaginatedResponse[ChatRoom]
+ChatRoomList = PaginatedResponse[ChatRoomDetail]
 
 
 class ChatThreadRoom(CircleModel):

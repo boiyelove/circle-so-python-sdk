@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from circle.constants import HEADLESS_V1_PREFIX as _P
 from circle.http import AsyncTransport, SyncTransport
 from circle.models.headless.chat import (
-    ChatRoom, ChatRoomList, ChatRoomMessage, ChatRoomMessages, ChatRoomParticipantList,
+    ChatRoom, ChatRoomDetail, ChatRoomList, ChatRoomMessage, ChatRoomMessages, ChatRoomParticipantList,
     ChatThread, ChatThreadList, UnreadChatRooms, CreateReactionResponse,
 )
 from circle.models.headless.notifications import (
@@ -47,6 +47,22 @@ def _page_params(page=1, per_page=10):
     return {"page": page, "per_page": per_page}
 
 
+def _text_to_tiptap(text: str) -> Dict[str, Any]:
+    """Convert plain text to Circle's tiptap rich_text_body format."""
+    content = []
+    for p in text.split("\n\n"):
+        if not p.strip():
+            continue
+        lines = p.split("\n")
+        para_content: List[Dict[str, Any]] = []
+        for i, line in enumerate(lines):
+            if i > 0:
+                para_content.append({"type": "hardBreak"})
+            para_content.append({"type": "text", "text": line})
+        content.append({"type": "paragraph", "content": para_content})
+    return {"body": {"type": "doc", "content": content}}
+
+
 class HeadlessChatNotifMembersClient:
     def __init__(self, transport: SyncTransport) -> None:
         self._t = transport
@@ -55,17 +71,19 @@ class HeadlessChatNotifMembersClient:
     def list_chat_rooms(self, *, page: int = 1, per_page: int = 10) -> ChatRoomList:
         return ChatRoomList.model_validate(self._t.request("GET", f"{_P}/messages", params=_page_params(page, per_page)))
 
-    def create_chat_room(self, **kw: Any) -> ChatRoom:
-        return ChatRoom.model_validate(self._t.request("POST", f"{_P}/messages", json={"chat_room": kw}))
+    def create_chat_room(self, **kw: Any) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(self._t.request("POST", f"{_P}/messages", json={"chat_room": kw}))
 
-    def get_chat_room(self, uuid: str) -> ChatRoom:
-        return ChatRoom.model_validate(self._t.request("GET", f"{_P}/messages/{uuid}"))
+    def get_chat_room(self, uuid: str) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(self._t.request("GET", f"{_P}/messages/{uuid}"))
 
     def list_chat_messages(self, chat_room_uuid: str, **kw: Any) -> ChatRoomMessages:
         return ChatRoomMessages.model_validate(
             self._t.request("GET", f"{_P}/messages/{chat_room_uuid}/chat_room_messages", params=_chat_msg_params(**kw)))
 
-    def create_chat_message(self, chat_room_uuid: str, **kw: Any) -> Dict[str, Any]:
+    def create_chat_message(self, chat_room_uuid: str, *, body: Optional[str] = None, **kw: Any) -> Dict[str, Any]:
+        if body is not None and "rich_text_body" not in kw:
+            kw["rich_text_body"] = _text_to_tiptap(body)
         return self._t.request("POST", f"{_P}/messages/{chat_room_uuid}/chat_room_messages", json=kw)
 
     def get_chat_message(self, chat_room_uuid: str, message_id: int) -> ChatRoomMessage:
@@ -83,8 +101,8 @@ class HeadlessChatNotifMembersClient:
         return ChatRoomParticipantList.model_validate(
             self._t.request("GET", f"{_P}/messages/{chat_room_uuid}/chat_room_participants", params=_page_params(page, per_page)))
 
-    def update_chat_participant(self, chat_room_uuid: str, participant_id: int, **kw: Any) -> ChatRoom:
-        return ChatRoom.model_validate(
+    def update_chat_participant(self, chat_room_uuid: str, participant_id: int, **kw: Any) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(
             self._t.request("PUT", f"{_P}/messages/{chat_room_uuid}/chat_room_participants/{participant_id}", json=kw))
 
     def mark_chat_as_read(self, uuid: str) -> None:
@@ -194,17 +212,19 @@ class AsyncHeadlessChatNotifMembersClient:
     async def list_chat_rooms(self, *, page: int = 1, per_page: int = 10) -> ChatRoomList:
         return ChatRoomList.model_validate(await self._t.request("GET", f"{_P}/messages", params=_page_params(page, per_page)))
 
-    async def create_chat_room(self, **kw: Any) -> ChatRoom:
-        return ChatRoom.model_validate(await self._t.request("POST", f"{_P}/messages", json={"chat_room": kw}))
+    async def create_chat_room(self, **kw: Any) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(await self._t.request("POST", f"{_P}/messages", json={"chat_room": kw}))
 
-    async def get_chat_room(self, uuid: str) -> ChatRoom:
-        return ChatRoom.model_validate(await self._t.request("GET", f"{_P}/messages/{uuid}"))
+    async def get_chat_room(self, uuid: str) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(await self._t.request("GET", f"{_P}/messages/{uuid}"))
 
     async def list_chat_messages(self, chat_room_uuid: str, **kw: Any) -> ChatRoomMessages:
         return ChatRoomMessages.model_validate(
             await self._t.request("GET", f"{_P}/messages/{chat_room_uuid}/chat_room_messages", params=_chat_msg_params(**kw)))
 
-    async def create_chat_message(self, chat_room_uuid: str, **kw: Any) -> Dict[str, Any]:
+    async def create_chat_message(self, chat_room_uuid: str, *, body: Optional[str] = None, **kw: Any) -> Dict[str, Any]:
+        if body is not None and "rich_text_body" not in kw:
+            kw["rich_text_body"] = _text_to_tiptap(body)
         return await self._t.request("POST", f"{_P}/messages/{chat_room_uuid}/chat_room_messages", json=kw)
 
     async def get_chat_message(self, chat_room_uuid: str, message_id: int) -> ChatRoomMessage:
@@ -222,8 +242,8 @@ class AsyncHeadlessChatNotifMembersClient:
         return ChatRoomParticipantList.model_validate(
             await self._t.request("GET", f"{_P}/messages/{chat_room_uuid}/chat_room_participants", params=_page_params(page, per_page)))
 
-    async def update_chat_participant(self, chat_room_uuid: str, participant_id: int, **kw: Any) -> ChatRoom:
-        return ChatRoom.model_validate(
+    async def update_chat_participant(self, chat_room_uuid: str, participant_id: int, **kw: Any) -> ChatRoomDetail:
+        return ChatRoomDetail.model_validate(
             await self._t.request("PUT", f"{_P}/messages/{chat_room_uuid}/chat_room_participants/{participant_id}", json=kw))
 
     async def mark_chat_as_read(self, uuid: str) -> None:

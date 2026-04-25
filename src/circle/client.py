@@ -141,6 +141,40 @@ class CircleClient:
         self._admin_transport.close()
         self._bearer_transport.close()
 
+    def headless_as_user(self, *, email: Optional[str] = None,
+                         community_member_id: Optional[int] = None) -> _HeadlessNamespace:
+        """Authenticate as a user and return a headless namespace for DMs, notifications, etc.
+
+        Requires the client to be initialized with a Headless Auth API token
+        (generated in Circle admin > Developers > Tokens > Headless Auth).
+
+        The returned namespace has a short-lived access token. Create a new one
+        for each session.
+
+        Args:
+            email: User's email address.
+            community_member_id: User's community member ID.
+
+        Returns:
+            A ``_HeadlessNamespace`` authenticated as the specified user.
+
+        Example:
+            >>> client = CircleClient(api_token="HEADLESS_AUTH_TOKEN")
+            >>> headless = client.headless_as_user(email="user@example.com")
+            >>> rooms = headless.chat_notif_members.list_chat_rooms()
+            >>> headless.chat_notif_members.create_chat_message(uuid, body="Hello!")
+        """
+        token = self.auth.create_auth_token(
+            email=email, community_member_id=community_member_id
+        )
+        url = self._bearer_transport._base_url
+        rl = self._bearer_transport._rate_limiter
+        user_transport = SyncTransport(
+            api_token=token.access_token, base_url=url,
+            auth_scheme="Bearer", rate_limit=rl._rate if rl else None,
+        )
+        return _HeadlessNamespace(user_transport)
+
     def __enter__(self) -> CircleClient:
         return self
 

@@ -56,6 +56,7 @@ async with AsyncCircleClient(api_token="YOUR_TOKEN") as client:
 - [Auth API](docs/auth-api.md) -- headless auth token management
 - [Models](docs/models.md) -- complete models reference
 - [Webhooks](docs/webhooks.md) -- signature verification and payload parsing
+- [Limitations](docs/limitations.md) -- known Circle API limitations (mentions, polls, moderators)
 
 ## Project Structure
 
